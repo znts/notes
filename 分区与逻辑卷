@@ -1,0 +1,125 @@
+分区工具 
+  fdisk MBR分区模式：4个主分区最大容量2T
+  分手GPT分区模式：128个主分区容量18EB
+      1EB = 1000PB 1PB = 1000TB
+  命令：
+  #lsblk / dev / vdb＃过于简单与常用，不做详细步骤。
+  #parted / dev / vdb
+   （parted）mktable gpt＃指定分区模式
+   （parted）print＃输出所有分区信息
+   （parted）mkpart＃创建新的分区
+    分区名称？nsd＃分区名称
+    文件系统类型？[EXT2]？xfs＃不起实际作用
+    起始点？0
+    结束点？2G
+    忽略/忽略/放弃/取消？忽略＃忽略
+   （parted）单位GB＃使用GB作为显示单位
+   （分手）打印
+   （分手）退出
+  #mkfs.ext4 / dev / vdb1＃格式化为ext4的文件系统
+  #mkfs.xfs＃格式化为xfs的文件系统
+  #mount设备目录＃挂载使用
+  #df -h＃查看正在挂载的设备的使用情况
+配置开机自动挂载
+  配置文件/ etc / fstab记录格式
+  - 设备路径挂载点文件系统类型参数备份标记检测顺序
+  #mount -a可用来检测/ etc / fstab格式是否正确;进行书写完的设备挂载
+  #partprobe刷新所有分区
+LVM逻辑卷的管理
+  作用：1。可以整合分散的空间2.容量大小可以扩大
+       零散的空闲存储--->整合的虚拟磁盘 - >虚拟的分区
+         物理卷PV卷组VG逻辑卷LV
+     将众多的物理卷（PV），组成卷组（VG），再从卷组中划分出逻辑卷（LV）
+ 一，创建逻辑卷
+   1.创建卷组
+    格式：vgcreate卷组名设备路径1设备路径2 ......
+    #vgcreate systemvg / dev / vdc1 / dev / vdc2
+    #vgs＃查看卷组信息
+    #pvs＃查看物理卷信息
+   2.通过卷组划分逻辑卷
+    格式：lvcreate -n逻辑卷名-L逻辑卷大小卷组名
+    #lvcreate -n mylv -L 16G systemvg
+    #lvs＃查看逻辑卷信息
+    #vgs
+    #ls -l / dev / systemvg / mylv
+    
+    #mkfs.xfs / dev / systemvg / mylv＃格式化为xfs文件系统
+    #blkid / dev / systemvg / mylv＃查看设备文件系统
+    #vim / etc / fstab
+    / dev / systemvg / mylv / lvm xfs默认值0 0
+    #mount -a＃检测是否书写正确
+    #df -h＃查看挂载情况
+ 二，逻辑卷的扩展
+   A.卷组有足够的剩余空间
+     1.扩展空间的大小
+       #vgs 
+       #lvextent -L 18G / dev / systemvg / mylv
+       #lvs
+     2.扩展文件系统的大小
+       resize2fs：扩展EXT4文件系统
+       xfs_growfs：扩展XFS文件系统
+       #df -h 
+       #xfs_growfs / dev / systemvg / mylv
+       #df -h
+   B.卷组没有足够的剩余空间
+     1.扩展卷组
+      #vgextend systemvg / dev / vdc3
+      #vgs
+     2.扩展空间的大小
+      #vgs
+      #lvextend -L 25G / dev / systemvg / mylv
+      #lvs
+     3.扩展文件系统的大小
+      ＃同上
+缩减空间： 
+      ext4文件系统支持缩减xfs文件系统不支持缩减
+卷组划分空间的单位：PE默认4M
+    1.查看卷组PE的大小
+     #vgdisplay systemvg
+      PE 4.00MiB
+    2.修改方式
+     卷组已存在，修改PE的大小
+     #vgchange -s PE大小卷组名
+     创建卷组的时候设置PE大小
+     #vgcreate -s PE大小卷组名设备路径
+     创建逻辑卷使用PE的个数创建
+     #lvcreate -l PE的个数-n逻辑卷卷组名
+ 逻辑卷的删除
+   1.先删除逻辑卷本身（先卸载）
+     #umount / lvm
+     #lvremove / dev / systemvg / mylv
+   2.再删除卷组
+     #vgremove / dev / systemvg 
+   3.最后删除物理卷（非必须）
+     #pvremove / dev / vdc [1-3]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
