@@ -1,0 +1,145 @@
+nginx
+安装nginx-1.10.3版本时，需要使用如下参数：
+--prefix=/usr/local/nginx
+--with-http_ssl_module：提供SSL加密功能
+--user：指定账户
+--group：指定组
+查看版本号  /usr/local/nginx/sbin/nginx –v
+curl http://192.168.4.5
+升级后可用
+kill -USR2 `cat /usr/local/nginx/logs/nginx.pid`
+用户认证
+# vim  /usr/local/nginx/conf/nginx.conf
+server {
+        listen       80;
+        server_name  localhost;
+        auth_basic "Input Password:";                        //认证提示符
+        auth_basic_user_file "/usr/local/nginx/pass";        //认证密码文件
+        location / {
+ 
+使用htpasswd命令生成密码文件，创建用户及密码
+yum -y install  httpd-tools
+配置SSL虚拟主机  生成私钥与证书
+# cd /usr/local/nginx/conf
+# openssl genrsa > cert.key    //生成私钥
+# openssl req -new -x509 -key cert.key > cert.pem
+
+server {
+        listen       443 ssl;
+        server_name            www.c.com;
+        ssl_certificate      cert.pem;         #这里是证书文件
+        ssl_certificate_key  cert.key;         #这里是私钥文件
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+Nginx结合FastCGI技术即可支持PHP页面架构
+ location  ~  \.php$  {
+            root           html;
+            fastcgi_pass   127.0.0.1:9000;    #将请求转发给本机9000端口，PHP解释器
+            fastcgi_index  index.php;
+            #fastcgi_param   SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+            include        fastcgi.conf;    ****配置文件错误 需要手动修改
+        }
+
+
+
+
+
+
+
+
+####################################################
+配置Nginx服务器，添加服务器池，实现反向代理功能
+#使用upstream定义后端服务器集群，集群名称任意(如webserver)
+#使用server定义集群中的具体服务器和端口
+upstream webs {
+                server 192.168.2.100:80;
+                server 192.168.2.200:80;
+        }
+.. ..
+server {
+        listen        80;
+        server_name  localhost;
+            location / {
+#通过proxy_pass将用户的请求转发给webs集群
+            proxy_pass http://webs;
+        }
+#####################################################
+配置upstream服务器集群池属性
+设置失败次数，超时时间，权重
+weight可以设置后台服务器的权重，max_fails可以设置后台服务器的失败次数，fail_timeout可以设置后台服务器的失败超时时间。#########################
+pstream webserver {
+                server 192.168.2.100 weight=1 max_fails=1 fail_timeout=30;
+                server 192.168.2.200 weight=2 max_fails=2 fail_timeout=30;
+                server 192.168.2.101 down;
+        }
+#weight设置服务器权重值，默认值为1
+#max_fails设置最大失败次数
+#fail_timeout设置失败超时时间，单位为秒
+#down标记服务器已关机，不参与集群调度
+.. ..
+server {
+        listen        80;
+        server_name  localhost;
+            location / {
+            proxy_pass http://webserver;
+        }            
+##################################################
+
+
+
+对页面进行压缩处理 修改nginx的配置文件
+    gzip  on;
+    gzip_min_length 1000;
+    gzip_comp_level 4;
+    gzip_types ext/plain text/css application/json application/x-javascript text/xml application/xml application/xml+rss text/javascript;
+
+服务器内存缓存
+open_file_cache          max=2000  inactive=20s;
+        open_file_cache_valid    60s;
+        open_file_cache_min_uses 5;
+        open_file_cache_errors   off;
+//设置服务器最大缓存2000个文件句柄，关闭20秒内无请求的文件句柄
+//文件句柄的有效时间是60秒，60秒后过期
+//只有访问次数超过5次会被缓存
+
+隐藏nginx的版本信息
+curl -I 192.168.150.34
+找到nginx的配置文件nginx.conf并编辑它
+在http{}中加入配置文件server_tokens off;
+保存并退出
+重启nginx
+用curl -I 192.168.150.34命令再次查看nginx版本，如图已经不再显示版本信息了
+
+如果是nginx+php，找到php-fpm配置文件，如fastcgi.conf或fcgi.conf
+找到：
+fastcgi_param SERVER_SOFTWARE nginx/$nginx_version;
+改为：
+fastcgi_param SERVER_SOFTWARE nginx;
+
+连接memcache数据库需要装php-pecl-memcache（yum装）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
