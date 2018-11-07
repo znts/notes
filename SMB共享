@@ -1,0 +1,79 @@
+Samba服务基础，配置SMB共享（Windows与Linux跨平台的共享）
+ 
+– 用途:为客户机提供共享使用的文件夹
+– 协议:SMB(TCP 139)验证、CIFS(TCP 445)传输数据
+ 
+• 所需软件包:samba
+• 系统服务:smb
+
+• Samba用户 —— 专用来访问共享文件夹的用户
+– 但需要提前建立同名的系统用户
+– 采用独立设置的密码与系统登陆密码不同
+
+ pdbedit -x harry   #删除samba共享帐号harry
+
+• 修改 /etc/samba/smb.conf
+[自定共享名]
+path = 文件夹绝对路径
+ public = no|yes //默认no
+ browseable = yes|no //默认yes
+ read only = yes|no //默认yes
+ write list = 用户1 .. .. //默认无
+ valid users = 用户1 .. .. //默认任何用户
+ hosts allow = 客户机地址 .. ..
+ hosts deny = 客户机地址 .. ..
+服务端安装samba软件包
+建立samba共享帐号
+# useradd -s /sbin/nologin harry
+# pdbedit -L         #列出所有的samba共享帐号
+发布目录 /common,共享名为 common
+  # mkdir /common
+
+ #vim /etc/samba/smb.conf  #按G(大写)到最后
+  此服务器必须是 STAFF 工作组的一个成员
+        workgroup = STAFF
+
+[common]
+  path = /common   一个目录
+[devops]
+  path = /devops  一个目录
+  write list = chihiro    #服务配置允许chihiro可以写
+重起smb服务
+# systemctl restart smb
+SELinux的 布尔值（功能的开关  on与off）
+  – 需要加 -P 选项才能实现永久设置
+# getsebool -a | grep samba          #查看SELinux布尔值
+# setsebool  samba_export_all_ro on  #修改SELinux布尔值
+# getsebool -a | grep samba
+修改SELinux布尔值
+# getsebool -a | grep samba
+# setsebool samba_export_all_rw on
+# getsebool -a | grep samba
+设置本机目录的基本的权限
+# setfacl -m u:chihiro:rwx /devops/
+# getfacl /devops/
+客户端：
+1.安装软件包cifs-utils(支持cifs传输协议)
+2.进行挂载
+# mkdir /mnt/nsd01
+# ls /mnt/nsd01
+# mount -o user=harry,pass=123 //172.25.0.11/common /mnt/nsd01/
+# df  -h
+# ls  /mnt/nsd01
+3.开机自动挂载/etc/fstab
+
+  _netdev:网络设备
+  在开机启动时，挂载带有_netdev参数的设备，需要首先将网络服务部署完成，配置好所有网络参数，在挂载本设备
+//172.25.0.11/devops /mnt/nsd02  cifs  defaults,user=kenji,pass=123,_netdev,multiuser,sec=ntlmssp 0 0
+  
+
+
+
+
+
+
+
+
+
+
+
