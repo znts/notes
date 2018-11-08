@@ -1,0 +1,181 @@
+Web通信基本概念
+• 基于 B/S (Browser/Server)架构的网页服务
+– 服务端提供网页
+– 浏览器下载并显示网页
+• Hyper Text Markup Language(html),超文本标记语言
+• Hyper Text Transfer Protocol(http),超文本传输协议 默认端口80
+RHEL7中的Web服务
+• 软件包:httpd
+• 系统服务:httpd
+• 提供的默认配置
+– Listen:监听地址:端口(80)
+– ServerName:本站点注册的DNS名称(空缺)
+– DocumentRoot:网页根目录(/var/www/html)
+– DirectoryIndex:起始页/首页文件名(index.html)
+服务端
+1.安装软件httpd
+2.重起httpd服务
+3.测试：访问测试页面
+
+– ServerName:本站点注册的DNS名称(空缺)
+   
+  DNS服务器：域名解析服务  将域名解析为IP地址
+            classroom.example.com
+
+         三个域名： server0.example.com
+              www0.example.com
+              webapp0.example.com
+服务端
+1.修改主配置文件
+[root@server0 ~]# vim /etc/httpd/conf/httpd.conf
+ 补充：vim 显示行号   末行模式：set  nu
+ 95行  ServerName server0.example.com:80   #将开头的#去掉
+2.重起httpd服务
+# systemctl restart httpd
+
+在客户端测试访问
+# firefox 
+
+ DocumentRoot:网页文件根目录(/var/www/html)
+# vim /etc/httpd/conf/httpd.conf   #扩展的配置文件
+
+虚拟Web主机
+– 由同一台服务器提供多个不同的Web站点
+• 构建/区分方式
+   基于域名的虚拟主机
+   基于端口的虚拟主机
+   基于IP地址的虚拟主机
+
+– 基于域名的虚拟主机
+
+• 为每个虚拟站点添加配置，容器式配置格式
+	<VirtualHost IP地址:端口>
+	  ServerName 此站点的DNS名称
+	  DocumentRoot 此站点的网页根目录
+	</VirtualHost>
+
+• 配置文件路径
+  – /etc/httpd/conf/httpd.conf
+  – /etc/httpd/conf.d/*.conf   （调用配置文件）
+
+一旦使用了虚拟Web主机功能，所有的Web站点都必须用虚拟Web主机来实现 匹配顺序由上到下匹配
+
+httpd的访问控制
+• 使用 <Directory> 配置区段
+– 每个文件夹自动继承其父目录的ACL访问权限
+– 除非针对子目录有明确设置
+<Directory 目录的绝对路径>
+.. ..
+  Require all denied|granted
+  Require ip IP或网段地址 .. ..
+</Directory>
+
+书写新的配置文件，针对/var/www/myweb/private设置访问控制
+# vim /etc/httpd/conf/httpd.conf 
+# vim /etc/httpd/conf.d/nsd02.conf
+ <Directory /var/www/myweb/private>
+    Require ip 172.25.0.11   #仅允许本机172.25.0.11访问
+ </Directory>
+#  systemctl restart httpd   修改完重启服务
+
+使用自定Web根目录 需要注意：
+SELinux安全上下文值（标签，标识文件或目录）
+# ls -Zd /var/www/      #查看目录的上下文值
+# ls -Zd /webroot/      #查看目录的上下文值
+部署动态网站
+ 网页跳转（网页访问路径别名）
+<VirtualHost *:80>
+  ServerName webapp0.example.com
+  DocumentRoot /var/www/baidu
+  Alias   /    /var/www/baidu/webinfo.wsgi
+   #客户端访问到 网页文件根目录时，将webinfo.wsgi页面呈现
+</VirtualHost>
+# systemctl restart httpd
+
+ 翻译Python的Web页面内容
+# yum -y install mod_wsgi  #解释Python程序
+#vim /etc/httpd/conf.d/XXX.conf  虚拟主机的扩展配置文件
+<VirtualHost *:80>
+  ServerName webapp0.example.com
+  DocumentRoot /var/www/baidu
+  WsgiScriptAlias  /    /var/www/baidu/webinfo.wsgi
+</VirtualHost>
+
+虚拟主机侦听在端口8909
+# vim /etc/httpd/conf.d/nsd01.conf
+Listen 8909
+<VirtualHost *:8909>
+  ServerName  webapp0.example.com
+  DocumentRoot  /var/www/baidu
+  WsgiScriptAlias  /    /var/www/baidu/webinfo.wsgi
+</VirtualHost>
+
+SELinux非默认端口的开放
+ # semanage port -l | grep http
+ # semanage port  -a  -t  http_port_t  -p  tcp 8909
+     -a:添加    -t：类型     -p：协议
+ # semanage port -l | grep http
+ # systemctl restart httpd
+########################################################
+安全的Web服务器，使用的协议https 默认端口 443
+
+• Public Key Infrastructure,公钥基础设施
+– 公钥:主要用来加密数据
+– 私钥:主要用来解密数据(与相应的公钥匹配)
+– 数字证书:证明拥有者的合法性/权威性(单位名称、
+有效期、公钥、颁发机构及签名、......)
+– Certificate Authority,数字证书授权中心:负责证书
+的申请/审核/颁发/鉴定/撤销等管理工作
+
+1.安装支持安全功能的软件
+[root@server0 ~]# yum -y install mod_ssl
+[root@server0 ~]# ls /etc/httpd/conf.d/ssl.conf
+
+2.部署网站证书（营业执照）
+# cd /etc/pki/tls/certs/
+# wget http://classroom.example.com/pub/tls/certs/server0.crt
+
+# ls  /etc/pki/tls/certs/
+
+3.部署根证书（公安局信息）
+# cd  /etc/pki/tls/certs/
+# wget http://classroom.example.com/pub/example-ca.crt
+
+# ls  /etc/pki/tls/certs/
+
+4.部署私钥（用于解密数据）
+# cd  /etc/pki/tls/private/
+# ls 
+5.修改配置文件指定证书位置等
+[root@server0 /]# vim /etc/httpd/conf.d/ssl.conf 
+ vim末行模式   :set  nu 显示行号
+ 59行  DocumentRoot  "网页存放路径"               #将注释去掉，修改路径
+ 60行  ServerName  www0.example.com:443  #将注释去掉，修改域名
+--指定网站证书位置
+100 SSLCertificateFile /etc/pki/tls/certs/server0.crt
+
+--指定私钥匙位置
+107 SSLCertificateKeyFile /etc/pki/tls/private/server0.key
+
+--指定根证书位置
+122 SSLCACertificateFile /etc/pki/tls/certs/example-ca.crt
+
+6.重起httpd服务
+# systemctl restart httpd
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

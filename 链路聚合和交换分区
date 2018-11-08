@@ -1,0 +1,106 @@
+交换空间
+• 相当于虚拟内存,
+– 当物理内存不够用时,使用磁盘空间来模拟内存
+– 在一定程度上缓解内存不足的问题
+– 交换分区:以空闲分区充当的交换空间
+
+1.格式化交换文件系统
+# mkswap /dev/vdb1    #格式化交换文件系统
+# blkid /dev/vdb1     #查看文件系统类型
+# mkswap /dev/vdb2   
+2.启用交换分区
+# swapon /dev/vdb1    #启用交换分区
+# swapon /dev/vdb2
+# swapon  -s          #查看交换空间信息
+3.停用交换分区
+# swapoff /dev/vdb1 
+# swapoff /dev/vdb2
+# swapon  -s
+4.开机自动启用交换分区
+# vim /etc/fstab 
+/dev/vdb1  swap  swap defaults  0 0
+/dev/vdb2  swap  swap defaults  0 0
+
+# swapoff /dev/vdb1
+# swapoff /dev/vdb2
+# swapon -a    #专用于检测swap分区开机自动启动
+# swapon -s
+
+配置聚合连接（链路聚合  网卡绑定 ）
+
+备份网卡设备:– 作用:热备份(activebackup)连接冗余
+              eth1     eth2  
+               虚拟网卡：team0 192.168.1.1
+制作链路聚合
+1.建立虚拟网卡team0,   参考 # man teamd.conf
+# nmcli connection add type team       
+  con-name  team0  ifname  team0  autoconnect yes          
+  config  '{"runner": {"name": "activebackup"}}'
+
+解析：nmcli connection 添加   类型  为team
+         配置文件名为 team0  网卡名为  team0  每次开机自动启用
+         链路聚合的工作模式为   热备份
+
+# ifconfig 
+
+如果有敲错，一定要删除
+# nmcli connection delete team0   #删除配置
+
+2. 加入成员
+# nmcli connection add type team-slave con-name team0-1 ifname eth1 master team0
+
+# nmcli connection add type team-slave con-name team0-2 ifname eth2 master team0
+
+解析：nmcli connection 添加   类型为  team的成员 配置文件名  team0-1  网卡为 eth1  主设备为  team0
+
+如果敲错，一定要删除配置
+# nmcli connection delete team0-1
+# nmcli connection delete team0-2
+
+3.配置IP地址
+# nmcli connection modify team0 ipv4.method manual ipv4.addresses 192.168.1.1/24 connection.autoconnect yes
+
+4.激活
+# nmcli connection up team0
+# nmcli connection up team0-1
+# nmcli connection up team0-2
+
+# teamdctl team0 state  #专业查看team0的命令
+# ifconfig eth1 down    #禁用网卡eth1
+# teamdctl team0 state
+
+防火墙  永久配置(permanent)
+
+# systemctl restart httpd
+# firewall-cmd --set-default-zone=public  #修改默认区域
+# firewall-cmd --zone=public --list-all   #查看public区域规则
+
+# firewall-cmd --zone=public --add-service=http  #添加协议
+
+# firewall-cmd --zone=public --list-all   #查看public区域规则
+
+实现永久
+# firewall-cmd --reload    #重新加载防火墙所有策略
+# firewall-cmd --zone=public --list-all   #查看public区域规则
+
+# firewall-cmd --permanent --zone=public --add-service=http
+# firewall-cmd --zone=public --list-all
+
+# firewall-cmd --reload 
+# firewall-cmd --zone=public --list-all
+
+端口转发：
+   客户端  访问 172.25.0.11：5423
+   防火墙进行端口转发将5423变成80
+   172.25.0.11：80
+
+服务端:
+# firewall-cmd --permanent --zone=public  --add-forward-port=port=5423:proto=tcp:toport=80
+
+# firewall-cmd --zone=public --list-all 
+# firewall-cmd --reload
+# firewall-cmd --zone=public --list-all
+
+必须利用客户端 测试：
+# firefox 172.25.0.11:5423
+
