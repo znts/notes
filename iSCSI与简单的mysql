@@ -1,3 +1,11 @@
+DAS (直连存储)
+
+NAS (文件系统存储)  nfs，sanba
+
+SAN (块存储Ethernet,Fc)   iscsi
+
+iqn.时间.反转域名.string:string   string (做什么 哪个设备)
+
 iSCSI网络磁盘
 
 • Internet SCSI,网际SCSI接口:默认端口 3260
@@ -77,7 +85,6 @@ iSCSI网络磁盘
 三、重起服务端target服务
 # systemctl restart target
 # systemctl enable target
-ln -s '/usr/lib/systemd/system/target.service' '/etc/systemd/system/multi-user.target.wants/target.service'
 
 客户端：
 1.安装软件包iscsi-initiator-utils
@@ -101,7 +108,8 @@ Warning: Unit file of iscsid.service changed on disk, 'systemctl daemon-reload' 
 4.寻找服务端共享存储，借鉴 man 帮助信息
 # man iscsiadm    # /example 按n进行跳转匹配
    
-# iscsiadm --mode discoverydb --type sendtargets --portal 172.25.0.11 --discover
+# iscsiadm --mode discoverydb --type sendtargets \
+--portal 172.25.0.11 --discover
 
 172.25.0.11:3260,1 iqn.2018-08.example.com:server0
 
@@ -110,6 +118,59 @@ Warning: Unit file of iscsid.service changed on disk, 'systemctl daemon-reload' 
 # systemctl restart iscsi
 # systemctl enable iscsi
 # lsblk   #能够发现sda磁盘
+
+部署Multipath多路径环境  需要两块网卡 配置ip并且启用
+1.客户端发现存储服务器的共享磁盘   使用不同的IP地址发现两次
+  重启服务   设置开机自启动   iscsi用于自动login远程存储，iscsid是守护进程。
+  # systemctl enable iscsid       # systemctl enable iscsi
+ # yum install -y device-mapper-multipath 安装多路径软件包
+ # cp /usr/share/doc/device-mapper-multipath-*/multipath.conf /etc/
+                     生成配置文件        |          获取(查看)wwid
+ # /usr/lib/udev/scsi_id --whitelisted --device=/dev/sdb 
+ # vim /etc/multipath.conf
+        defaults {
+                user_friendly_names yes
+        find_multipaths yes
+           }
+ 
+           multipaths {
+               multipath {
+               wwid    "360014059e8ba68638854e9093f3ba3a0"
+            alias   mpatha
+               }
+             }
+
+# systemctl start multipathd
+如果多路径设置成功，那么将在/dev/mapper下面生成名为mpatha的设备文件：
+
+分区： 
+# parted /dev/sda mklabel gpt    第一次分区 选择分区类型为gpt 
+# parted /dev/sda mkpart primary 1 100%
+# mkfs.xfs /dev/sda1
+新的分区名称应该是/dev/mapper/mpathap1
+# ls /dev/mapper/    ＃再次查看，将会看到新的分区
+创建目录并挂载
+查看多路径，sda和sdb都是running状态。
+# multipath -rr    # multipath -ll
+编写udev规则
+  1.处理设备命名
+  2.决定要创建哪些设备文件或链接
+  3.决定如何设置属性
+  4.决定触发哪些事件
+udev默认规则存放在/etc/udev/rules.d目录下，通过
+修改此目录下的规则实现设备的命名、属性、链接文件等。
+1.实时查看设备的相关属性，可以使用monitor指令。
+# udevadm monitor --property
+查看已经加载设备属性
+# udevadm info --query=path --name=/dev/sda
+# udevadm info --query=property --path=/block/sda
+# udevadm info --query=all --attribute-walk --path=/block/sda
+编写udev规则文件# vim  /etc/udev/rules.d/70-usb.rules
+udev常用替代变量：
+%k：内核所识别出来的设备名，如sdb1
+%n：设备的内核编号，如sda3中的3
+%p：设备路径，如/sys/block/sdb/sdb1
+%%：%符号本身
 
 数据库管理：存放数据的仓库
  数据库 中会有很多的  库 ，在每一个库中会有很多的  表格
