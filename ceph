@@ -1,0 +1,137 @@
+ceph部署
+
+准备初始环境
+1.ntp时间同步 # iptables -F 清空防火墙规则
+2.搭建ceph的yum源 3.免密登陆ssh-keygen ssh-copy-id
+# ssh-keygen -f /root/.ssh/id_rsa -N '' #生成密钥
+4.修改/etc/hosts IP 和后端主机名对应
+# for i in 10 11  12  13
+> do
+> ssh-copy-id  192.168.4.$i
+> scp  /etc/hosts  192.168.4.$i:/etc/
+> done
+#################################################
+安装 一台作为部署用的主控制机
+yum -y install ceph-deploy    #ceph部署工具
+mkdir ceph && cd ceph 创建目录并进入
+#ceph-deploy new node1 node2 node3 #创建Ceph集群配置
+#ceph-deploy install node1 node2 node3 #给所有节点安装软件包
+#ceph-deploy mon create-initial #初始化所有节点的mon服务
+#rpm -qa | grep ceph
+################################################
+创建磁盘(缓存)分区 
+#parted /dev/vdb mkl gpt
+#parted /dev/vdb mkp p 1 50%
+#parted /dev/vdb mkp p 50% 100%
+#chown ceph.ceph /dev/vdb1
+#chown ceph.ceph /dev/vdb2
+添加UDEV规则，使得vdb1和vdb2重启后，属主属组仍然是ceph
+# vim /etc/udev/rules.d/*-cephdisk.rules
+ACTION=="add",KERNEL=="vdb[12]", OWNER="ceph", GROUP="ceph"
+###################################################
+初始化disk #清空每个服务器共享的磁盘数据 在1上操作每个后端
+ceph-deploy disk zap node1:vdc node1:vdd
+####################################################
+创建osd存储  #同上
+ceph-deploy osd creat node1:vdc:/dev/vdb1 node1:vdd:/dev/vdb2
+#######################################################
+ceph -s    #查看集群状态
+如果NTP时间不同步,检查NTP并重启所有ceph服务
+# systemctl restart ceph\*.service ceph\*.target
+创建ceph块存储镜像
+ceph osd lspools  查看ceph存储池
+0 rbd,
+
+#rbd create 存储池/镜像名 --image-feature layering --size 大小   #创建镜像
+#rbd info 存储池/镜像名
+###########################################################
+动态调整镜像大小
+rbd resize --size 调整后大小 镜像名   #缩小在最后加 （ --allow-shrink ）
+##############################################################
+客户端访问
+#客户端需要安装ceph-common软件包
+#拷贝配置文件（否则不知道集群在哪）
+#拷贝连接密钥（否则无连接权限）
+#yum -y install ceph-common
+#scp这两个文件ceph.conf ceph.client.admin.keyring 到/etc/ceph/
+
+#rbd map 镜像名
+#rbd showmapped
+
+#mkfs.xfs /dev/rbd0
+#mount /dev/rbd0 /mnt
+
+###############################################################
+rbd snap create 镜像名 --snap 快照名   #为镜像创建快照
+rbd snap ls 镜像名    		     #查看镜像快照
+##############################################################
+快照还原镜像（支持cow写时快照）
+umount
+rbd snap rollback 镜像名 --snap 快照名
+mount
+
+###############################################################
+克隆镜像        #基于镜像快照克隆
+rbd snap protect 镜像名 --snap 快照名               #锁定快照    
+rbd snap rm 镜像名 --snap 快照名            #尝试删除快照，检查快照是否被锁定
+rbd clone 镜像名 --snap 源快照名  克隆镜像名  --image-feature layering
+
+#rbd ls     			#查看克隆镜像
+#rbd info 克隆镜像名		 #查看镜像的信息
+#rbd flatten 克隆镜像名	#使克隆镜像脱离快照，独立工作
+# rbd unmap /dev/rbd/rbd/image  #卸载磁盘映射 
+# rbd snap rm image --snap image-snap 删除快照与镜像
+##########################################################################
+KVM虚拟机使用ceph存储
+##########################################
+vim secret.xml            
+<secret ephemeral='no' private='no'>
+   <usage type='ceph'>
+      <name>client.admin secret</name>
+   </usage>
+</secret>
+##########################################
+virsh secret-define  --file secret.xml       #生成uuid——》账户名
+cat /etc/ceph/ceph.client.admin.keyring      #查看key
+virsh secret-set-value                       #设置账户（uuid）密码（key） 
+      --secret uuid
+      --base64 key
+###########################################
+virsh edit 虚拟机名
+
+     <disk type='network' device='disk'>
+       <driver name='qemu' type='raw'/>
+       <auth username='admin'>
+       <secret type='ceph' uuid='e31b9fa3-32d9-4fee-ba78-8919df54825e'/>
+       </auth>
+       <source protocol='rbd' name='存储池/镜像名'>
+       <host name='monitorserver' port='6789'/>
+       </source>
+       <target dev='vda' bus='virtio'/>
+       <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
+      </disk>
+###########################################
+ceph文件系统共享
+
+前置 ntp yum ssh-copy-id /etc/hosts “cd到工作目录”
+############################################
+yum -y install ceph-mds
+ceph-deploy  mds  create  mdsserver  初始化MDSserver
+ceph-deploy  admin  node5     同步配置文件和key
+ceph osd pool create ceph-data   128
+ceph osd pool create ceph-metadata  128
+
+ceph mds stat
+
+ceph fs new  文件系统名  cephfs-metadata   cephfs-data  
+
+mount -t ceph Monitorserver:6789:/  /mnt/cephfs/ -o name=admin,secret=key
+
+
+
+
+
+
+
+
+ 

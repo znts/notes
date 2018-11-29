@@ -1,0 +1,41 @@
+﻿系统安全保护
+ • Security-Enhanced Linux
+ – 美国NSA国家安全局主导开发,一套增强Linux系统安全的强制访问控制体系
+ – 集成到Linux内核(2.6及以上)中运行
+ – RHEL7基于SELinux体系针对用户、进程、目录和文件
+ 提供了预设的保护策略,以及管理工具
+ • SELinux的运行模式     SELinux<root
+  – enforcing(强制)、permissive(宽松)
+  – disabled(彻底禁用) 
+ 任何一种运行模式，变成disabled(彻底禁用)都要经历重起系统
+
+切换运行模式
+  – 临时切换:setenforce 1|0
+  – 固定配置:/etc/selinux/config 文件
+  SELinux布尔值（服务功能的开关   on 或 off）
+  SELinux安全上下文
+防火墙： 隔离作用
+  硬件防火墙
+  软件防火墙
+firewalld服务
+ • 系统服务:firewalld
+ • 管理工具:firewall-cmd、firewall-config
+  #systemctl restart firewalld
+  #firewall-config &
+ • 根据所在的网络场所区分,预设保护规则集
+  – public:仅允许访问本机的ssh、ping、dhcp服务  (默认区域)
+  – trusted:允许任何访问
+  – block:阻塞任何来访请求，明确拒绝
+  – drop:丢弃任何来访的数据包，直接丢弃
+
+ 数据包：  数据   源ip地址   目标IP地址
+
+防火墙进入区域的规则：匹配及停止
+    1.查看数据包种源ip地址，再查看所有的区域中，是否有该源IP地址的规则，那个区域有，则进入该区域
+
+    2.进入默认区域为public   如果需要永久修改用permanent参数
+      默认区域的修改
+      # firewall-cmd --get-default-zone   #查看默认区域
+      # firewall-cmd --reload      #重新加载防火墙配置
+     添加源IP规则设置    单独拒绝172.25.0.10访问
+      # firewall-cmd --zone=block --add-source=172.25.0.10

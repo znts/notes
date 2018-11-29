@@ -1,0 +1,164 @@
+创建LVS虚拟集群服务器  
+
+部署LVS-NAT集群
+调度服务器装包
+# yum -y install ipvsadm
+# ipvsadm -Ln        #查看
+  -A 添加集群 -E 修改集群 -D 删除 集群 -C 清空所有
+  -a 添加真实服务器 -e 修改真实服务器 -d 删除 -L 查看
+   -[rr|wrr|lc|wlc]  指定集群算法
+   -t -u 协议为tcp或者udp
+    -g (DR 模式) -i(隧道模式)-m(NAT模式)
+# ipvsadm-save -n > /etc/sysconfig/ipvsadm
+   #保存所有规则
+开启路由转发功能：
+  echo 1 > /proc/sys/net/ipv4/ip_forward (临时)
+  echo "net.ipv4.ip_forward = 1"  #永久
+客户端使用curl命令反复连接http://x.x.x.x，
+查看访问的页面是否会轮询到不同的后端真实服务器。
+
+部署LVS-DR集群
+CIP是客户端的IP地址；
+VIP是对客户端提供服务的IP地址；
+RIP是后端服务器的真实IP地址；
+DIP是调度器与后端服务器通信的IP地址（VIP必须配置在虚拟接口）。
+
+后端服务器：
+# cp /etc/sysconfig/network-scripts/ifcfg-eth0{,:0}
+# vim /etc/sysconfig/network-scripts/ifcfg-lo:0
+DEVICE=lo:0
+IPADDR=192.168.4.15
+NETMASK=255.255.255.255
+NETWORK=192.168.4.15
+BROADCAST=192.168.4.15
+ONBOOT=yes
+NAME=lo:0
+注意：这里的子网掩码必须是32（也就是全255），
+网络地址与IP地址一样，广播地址与IP地址也一样。
+
+# vim /etc/sysctl.conf
+#手动写入如下4行内容
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.lo.arp_ignore = 1
+net.ipv4.conf.lo.arp_announce = 2
+net.ipv4.conf.all.arp_announce = 2
+#当有arp广播问谁是192.168.4.15时，本机忽略该ARP广播，不做任何回应
+#本机不要向外宣告自己的lo回环地址是192.168.4.15
+# sysctl -p         #立即读取配置文件
+# systemctl restart network     #重启服务
+# systemctl stop firewalld      #关闭防火墙
+# setenforce 0                  #关闭SELinux
+
+修改web1服务器Keepalived配置文件
+# vim /etc/keepalived/keepalived.conf
+global_defs {
+  notification_email {
+    admin@tarena.com.cn         //设置报警收件人邮箱
+  }
+  notification_email_from ka@localhost    //设置发件人
+  smtp_server 127.0.0.1         //定义邮件服务器
+  smtp_connect_timeout 30
+  router_id  web1               //设置路由ID号（实验需要修改）
+}
+vrrp_instance VI_1 {
+  state MASTER             //主服务器为MASTER（实验需要修改）
+  interface eth0           //定义网络接口（实验需要修改）
+  virtual_router_id 50           //主辅VRID号必须一致（实验需要修改）
+  priority 100           //服务器优先级,优先级高优先获取VIP（实验需要修改）
+  advert_int 1
+  authentication {
+    auth_type pass
+    auth_pass forlvs      //主辅服务器密码必须一致
+  }
+  virtual_ipaddress { 192.168.4.80  }   //谁是主服务器谁获得该VIP（实验需要修改）
+}
+
+修改web2服务器Keepalived配置文件
+[root@web2 ~]# vim /etc/keepalived/keepalived.conf
+global_defs {
+  notification_email {
+    admin@tarena.com.cn         //设置报警收件人邮箱
+  }
+  notification_email_from ka@localhost    //设置发件人
+  smtp_server 127.0.0.1          //定义邮件服务器
+  smtp_connect_timeout 30
+  router_id  web2                //设置路由ID号（实验需要修改）
+}
+vrrp_instance VI_1 {
+  state BACKUP                   //从服务器为BACKUP（实验需要修改）
+  interface eth0                 //定义网络接口（实验需要修改）
+  virtual_router_id 50           //主辅VRID号必须一致（实验需要修改）
+  priority 50                    //服务器优先级（实验需要修改）
+  advert_int 1
+  authentication {
+     auth_type pass
+     auth_pass forlvs             //主辅服务器密码必须一致（实验需要修改）
+  }
+  virtual_ipaddress {  192.168.4.80  }  //谁是主服务器谁配置VIP（实验需要修改）
+}
+
+启动服务：
+# systemctl start keepalived
+
+配置防火墙和SELinux
+启动keepalived会自动添加一个drop的防火墙规则，需要清空！
+web1# iptables -F
+web1# setenforce 0
+web2# iptables -F
+web1# setenforce 0
+测试	在Web上查看VIP信息
+# ip addr show
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

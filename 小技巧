@@ -87,7 +87,10 @@ i节点编号：标识硬盘上一块存储空间的编号
   硬连接：快捷方式不可以跨分区，源文件不可以是目录
 软连接独占一个i节点编号，硬连接与源文件i节点编号一致
 
-
+Linux开启路由 
+临时 echo 1 > /proc/sys/net/ipv4/ip_forward
+永久 echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+/etc/reyncd.conf     脚本的绝对路径写进去
 
 
 
