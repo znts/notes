@@ -49,6 +49,7 @@ net.ipv4.conf.all.arp_announce = 2
 # systemctl stop firewalld      #关闭防火墙
 # setenforce 0                  #关闭SELinux
 
+<<<<<<< HEAD
 修改web1服务器Keepalived配置文件
 # vim /etc/keepalived/keepalived.conf
 global_defs {
@@ -108,6 +109,18 @@ web2# iptables -F
 web1# setenforce 0
 测试	在Web上查看VIP信息
 # ip addr show
+=======
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 4e73b252b121331e02073eeddf48b8f08c653122
 
 
 
