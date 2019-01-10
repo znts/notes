@@ -21,6 +21,8 @@ rsync同步操作
 实现远程同步
  rsync+ssh
 
+# rsync -aSH --delete 
+
 • 与远程的 SSH目录保持同步
 – 下行:rsync [...]  user@host:远程目录    本地目录
 – 上行:rsync [...]  本地目录   user@host:远程目录
@@ -30,6 +32,7 @@ rsync同步操作
 
 1.A主机生成 公钥、私钥
 # ssh-keygen    #一路回车
+# ssh-keygen -N  ''   -f /root/.ssh/id_rsa
 2.公钥、私钥生成的位置
 # ls /root/.ssh/
 3.传递公钥到B主机
@@ -59,7 +62,6 @@ inotifywait监控
     do
            $myrsync 
     done &
-
 
 
 

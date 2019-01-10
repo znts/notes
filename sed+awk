@@ -1,0 +1,110 @@
+sed文本处理工具的用法：
+用法1：前置命令 | sed  [选项]  '条件指令'
+用法2：sed  [选项]  '条件指令'  文件.. ..
+
+条件可以是行号或者/正则/
+没有条件时，默认为所有条件
+指令可以是增、删、改、查等指令
+默认sed会将所有输出的内容都打印出来，可以使用-n屏蔽默认输出
+选项中可以使用-r选项，让sed支持扩展正则
+
+sed命令的常用选项如下：
+  -n	（屏蔽默认输出，默认sed会输出读取文档的全部内容）
+  -r	（让sed支持扩展正则）   ************
+  -i	（sed直接修改源文件，默认sed只是通过内存临时修改文件，源文件无影响）
+1）sed命令的 -n 选项    
+# sed -n '1p' /etc/hosts		# sed输出/etc/hosts的第1行
+# sed  -n '3,6p' /etc/passwd	打印passwd第3到第6行账户的信息：
+
+sed命令的 -i 选项
+正常情况下，sed命令所做的处理只是把操作结果（包括打印、删除等）输出到当前终端屏幕，而并不会对原始文件做任何更改：
+
+# sed 'd' /etc/passwd                //删除所有行
+# sed -n '/root/p' /etc/passwd		打印包含root的行
+# sed -n 'p' /etc/passwd		没有条件，则表示匹配所有行
+# sed  '/^$/d' a.txt             //删除所有空行
+# sed  '$d' a.txt                //删除文件的最后一行
+# sed  '/xml/d' a.txt            //删除所有包含xml的行
+
+sed命令的s替换基本功能（s/旧内容/新内容/选项）：
+# sed -i 's/2017/xxxx/'  a.txt		将2017替换为xxxx
+
+注意：替换操作的分隔“/”可改用其他字符，如#、&等，便于修改文件路径
+# sed 's#/bin/bash#/sbin/sh#' a.txt  //将/bin/bash替换为/sbin/sh
+# sed 's/xml//g'     a.txt     //将所有的xml都删除（替换为空串）
+# sed 's/^#an/an/'  a.txt      //解除以#an开头的行的注释（去除行首的#号）
+
+将文件中每行的第一个、倒数第1个字符互换
+# sed -r 's/^(.)(.*)(.)$/\3\2\1/' nssw.txt
+每行文本拆分为“第1个字符”、“中间的所有字符”、“倒数第1个字符”三个部分，然后通过替换操作重排顺序为“3-2-1”
+
+# sed -r 's/[0-9]//g;s/^( )+//' a.txt	#删除所有数字、行首空格
+# sed -r 's/([A-Z])/[\1]/g' a.txt		#使用“（）”可实现保留功能
+
+
+编写anonftp.sh脚本，用来装配匿名FTP服务
+# vim anonftp.sh
+#!/bin/bash
+yum -y install vsftpd                             //安装vsftpd软件
+cp /etc/vsftpd/vsftpd.conf{,.bak}                  //备份默认的配置文件
+sed -i "s/^#anon/anon/" /etc/vsftpd/vsftpd.conf      //修改服务配置
+chmod 777 /var/ftp/pub                              //调整目录权限
+systemctl start vsftpd                              //启动服务
+systemctl enable vsftpd                            //设为自动运行
+
+# sed  '2a XX'   a.txt            //在第二行后面，追加XX
+# sed  '2i XX'   a.txt            //在第二行前面，插入XX
+# sed  '2c XX'   a.txt            //将第二行替换为XX
+
+使用sed修改主机名配置所在行的内容（c整行替换）
+# sed  '1c mysvr.tarena.com' /etc/hostname
+使用sed修改hosts文件，添加新纪录（a追加）
+# sed  -i  '$a 192.168.4.5  svr5.tarena.com svr5'  /etc/hosts  
+
+计划任务
+磁盘管理
+iptable
+ssh
+apache nginx
+PXE+ks
+LNMP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

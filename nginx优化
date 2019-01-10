@@ -1,9 +1,14 @@
-nginx
+nginx   调度 缓存 web 都可以做 
+外网带宽小于500M时只用七层调度
+nginx + lua 一种脚本语言
 安装nginx-1.10.3版本时，需要使用如下参数：
 --prefix=/usr/local/nginx
 --with-http_ssl_module：提供SSL加密功能
 --user：指定账户
 --group：指定组
+
+--user=nginx --group=nginx --with-http_ssl_module --with-stream --without-mail_pop3_module --without-mail_imap_module --without-mail_smtp_module --without-http_ssi_module
+
 查看版本号  /usr/local/nginx/sbin/nginx –v
 curl http://192.168.4.5
 升级后可用

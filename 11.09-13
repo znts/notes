@@ -1,0 +1,80 @@
+11.09
+1. iscsi优点基于IP协议技术的标准， 允许网络在TCP/IP协议上传输SCSI命令，
+相对FC SAN，iSCSI实现的IP SAN投资更低，解决了传输效率、存储容量、
+兼容性、开放性、安全性等方面的问题，没有距离限制。
+2 iSCSI操作流程• Target端：选择target名称，安装iSCSI target
+– 准备用于target的存储
+– 配置target
+– 启用服务
+• Initiator端
+– 安装initiator
+– 配置initiator并启动服务
+3.udev的作用
+从内核收到添加/移除硬件事件时，udev将会分析：
+/sys目录下信息/etc/udev/rules.d目录中的规则基于分析结果，udev会：
+处理设备命名，决定要创建哪些设备文件或链接，决定如何设置属性，决定触发哪些事件
+11.10
+LVS集群组成
+• 前端：负载均衡层– 由一台或多台负载调度器构成
+• 中间：服务器群组层– 由一组实际运行应用服务的服务器组成
+• 底端：数据共享存储层– 提供共享存储空间的存储区域
+LVS工作模式有哪些
+• VS/NAT– 通过网络地址转换实现的虚拟服务器– 大并发访问时，调度器的性能成为瓶颈
+• VS/DR– 直接使用路由技术实现虚拟服务器– 节点服务器需要配置VIP，注意MAC地址广播
+• VS/TUN– 通过隧道方式实现虚拟服务器
+负载均衡调度算法有哪些
+• LVS目前实现了10种调度算法
+• 常用调度算法有4种
+– 轮询（Round Robin）将客户端请求平均分发到Real Server
+– 加权轮询（Weighted Round Robin）根据Real Server权重值进行轮询调度
+– 最少连接（Least Connections）选择连接数最少的服务器
+– 加权最少连接（ Weighted Least Connections ）根据Real Server权重值，
+选择连接数最少的服务器
+
+11.12
+HAProxy的工作模式是什么
+• mode http
+– 客户端请求被深度分析后再发往服务器
+• mode tcp
+– 客户端与服务器之间建立会话，不检查第七层信息
+• mode health– 仅做健康状态检查，已经不建议使用
+HAProxy优缺点是什么
+• 优点
+– 支持session、cookie功能
+– 可以通过url进行健康检查
+– 效率、负载均衡速度，高于Nginx，低于LVS– HAProxy支持TCP，可以对MySQL进行负载均衡
+– 调度算法丰富
+• 缺点 
+1.正则弱于Nginx 2.日志依赖于syslogd,不支持apache日志
+
+Keepalived运行原理
+• Keepalived检测每个服务器节点状态
+• 服务器节点异常或工作出现故障， Keepalived将故障节点从集群系统中剔除
+• 故障节点恢复后，Keepalived再将其加入到集群系统中• 所有工作自动完成，无需人工干预
+11.13
+什么是ceph
+• ceph是一个分布式文件系统
+• 具有高扩展、高可用、高性能的特点
+• ceph可以提供对象存储、块存储、文件系统存储
+• ceph可以提供PB级别的存储空间
+• 软件定义存储(Software Defined Storage)作为存储行业的一大发展趋势，已经越来越受到市场的认可
+
+什么是块存储
+• Ceph块设备也叫做RADOS块设备– RADOS block device：RBD
+• RBD驱动已经很好的集成在了Linux内核中
+• RBD提供了企业功能，如快照、COW克隆等等
+• RBD还支持内存缓存，从而能够大大提高性能
+• 单机块设备– 光盘– 磁盘
+• 分布式块存储– Ceph– Cinder
+什么是分布式文件系统
+• 分布式文件系统（Distributed File System）是指文件系统管理的
+物理存储资源不一定直接连接在本地节点上，而是通过计算机网络与节点相连
+• 分布式文件系统的设计基于客户机/服务器模式
+
+
+
+
+
+
+
+

@@ -1,0 +1,249 @@
+docker 安装
+
+停止禁用防火墙
+# systemctl stop firewalld
+# systemctl mask firewalld
+
+禁用 selinux
+# vim /etc/selinux/config 
+  SELINUX=disabled
+
+配置 yum 源，安装 docker
+# yum install docker-engine
+
+启动测试
+# systemctl start docker
+# ifconfig  启动后可以看见  docker0: 
+# docker version   查看版本信息
+
+搜索镜像  docker  search
+下载镜像  docker  pull  busybox
+查看帮助  docker  help  pull
+查看镜像  docker  images
+
+导入镜像
+# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+
+# docker load <busybox.tar 
+
+# docker images
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+busybox             latest              f6e427c148a7        3 weeks ago         1.146 MB
+
+导出镜像
+# docker save busybox >busybox.tar
+
+导入所有文件
+# unzip docker_img.zip
+# cd   docker_images
+# for i in *;do docker load <${i};done
+
+docker run 使用
+-i   交互式的
+-t   分配终端
+-d  把容器放在后台运行
+利用镜像启动容器
+# docker run -it busybox 
+# docker run -it centos   
+
+查看容器列表
+# docker  ps
+
+查看详细信息
+# docker inspect  容器ID
+# docker inspect -f '{.NetworkSettings.IPAddress}' 容器ID
+
+docker 问题及解答
+问题：docker run -it  busybox  /bin/bash  报错问题
+原因：
+最后的命令是容器内部命令，容器内，存在才可以执行
+可以不指定，不指定启动默认命令
+
+问题：docker run -it  centos  退出后，配置全部丢失
+原因：
+run 启动的是新的容器，老的容器退出后就停止了
+启动管理一个老的容器可以使用 docker start|stop|restart
+
+问题：老容器启动以后，怎么在进入？
+# docker  exec -it  容器id  /bin/bash
+# docker  attach    容器id
+
+exec 与 attach 的区别
+exec     单独启动命令运行，与容器启动的终端无关
+attach   不启动新的命令，直接连接 console 终端
+exec     退出不会影响容器的运行
+attach   退出后，容器结束
+
+问题：如果使用attach 连接容器后，怎么才能不结束容器？
+解决方法：把容器放后台，使用快捷键 ctrl + pq
+
+问题：attach 为什么退出后，容器会结束？
+因为 attach 连接进容器的 pid 1 的进程，当 attach 结束时候，pid 为 1 的进程被结束
+所有整个容器被销毁
+
+问题：docker run -it  nginx  没响应？
+因为 nginx 启动的默认 cmd 时 nginx daemon，该进程不是一个交互式的进程
+
+# docker  run  -it    centos   bash   启动一个交互式的容器，在前台运行
+# docker  run  -d    centos    bash   启动一个非交互式的容器，在后台运行
+# docker  run  -itd  centos    bash   启动一个交互式的容器，在后台运行
+
+
+交互式的进程启动要使用  it ， 非交互式的使用 d ，交互式的放后台使用  itd
+启动  bash  的正确姿势  docker run -itd  centos
+启动 nginx 的正确姿势  docker run  -d  -p 80:80  nginx
+
+
+禁用系统防火墙，在物理机和虚拟机上都需要执行
+systemctl stop firewalld
+systemctl mask firewalld
+
+复习和回顾
+问题 1，虚拟机不能上网
+前提条件，物理机能上网
+
+1 物理机执行以下命令
+sysctl  -w  net.ipv4.ip_forward=1
+
+查找物理机上网的网卡名称  enp2s0  ，通过  ifconfig 查找的
+systemctl stop firewalld
+iptables -t nat -I POSTROUTING  -s  192.168.4.0/24 -o enp2s0 -j MASQUERADE
+
+查找物理机和虚拟机通讯的 ip 地址，通过 ifconfig    192.168.4.254
+
+2  在虚拟机上执行
+ip  route replace default via 192.168.4.254
+
+ping 202.106.196.115
+
+问题 2，给容器配置 yum 源
+查看宿主机的 yum 源配置
+[rhel7]
+name=rhel
+baseurl=ftp://192.168.4.254/rhel7
+enabled=1
+gpgcheck=0
+
+练习： 创建一个容器，配置 yum 源，并且安装  ifconfig 命令
+
+自定义镜像 
+1、创建一个容器 docker run -itd centos
+2、进入容器进行修改配置  docker exec -it  容器id  bash
+2.5   停止容器，不是必须的
+3、创建镜像并验证 docker  commit  容器id   镜像名称：标签
+
+使用 Dockerfile 编排镜像
+FROM centos
+RUN  rm -f /etc/yum.repos.d/*.repo
+ADD  local.repo /etc/yum.repos.d/local.repo
+RUN  yum install net-tools vim-enhanced psmisc iproute -y
+
+编排命令
+docker  build  -t  myos:latest  .
+
+基于 myos 创建 httpd 的镜像
+FROM myos
+RUN  yum install -y httpd
+ENV  EnvironmentFile=/etc/sysconfig/httpd
+EXPOSE 80
+CMD  ["/usr/sbin/httpd", "-DFOREGROUND"]
+
+
+
+
+
+
+创建私有仓库
+1  添加配置文件  /etc/docker/daemon.json
+touch  /etc/docker/daemon.json
+{
+  "insecure-registries" : ["192.168.4.10:5000"]
+}
+重启 docker 服务
+systemctl restart docker
+
+2 启动私有仓库
+docker run -d -p 5000:5000 registry
+
+3 测试上传镜像到私有仓库
+3.1  标记一下哪个镜像要上传
+docker  tag   busybox:latest   镜像服务器ip:5000/busybox:latest
+3.2 上传镜像
+docker  images
+docker  push  镜像服务器ip:5000/busybox:latest
+
+4 私有仓库的使用 
+查看私有仓库里面的 镜像
+http://192.168.4.10:5000/v2/_catalog
+查看私有仓库里面镜像的标签
+http://192.168.4.10:5000/v2/myos/tags/list
+
+5 使用私有仓库运行容器
+5.1  添加配置文件  /etc/docker/daemon.json
+touch  /etc/docker/daemon.json
+{
+  "insecure-registries" : ["192.168.4.10:5000"]
+}
+
+5.2 重启 docker 服务
+systemctl  restart  docker
+
+5.3 启动容器
+docker run -itd 192.168.4.10:5000/myos:latest
+docker run -itd 192.168.4.10:5000/myos:python
+
+容器的存储与端口映射
+存储卷的映射
+docker run -d  -v /var/webroot:/var/www/html   myos:httpd
+
+扩展实验
+目标：使用 nfs 共享，所有容器内的web 页面统一
+配置启动一个 apache 的容器
+配置 NFS 服务器，使用 docker  mount nfs ，利用卷映射到 容器
+
+容器网络
+查看 docker 网络配置
+docker network list
+
+创建一个网桥 br0
+docker network create --driver bridge br0
+
+删除一个网桥 br0
+docker network rm br0
+
+创建一个网桥
+docker network create --driver bridge --subnet=192.168.1.0/24 br0
+
+在新的网桥上创建容器
+docker  run -it --network=br0  myos
+
+
+
+
+私有仓库创建过程：
+# vim /etc/docker/daemon.json    //不写这个文件会报错
+{
+"insecure-registries" : ["192.168.1.10:5000"]    //使用私有仓库运行容器
+}
+# docker run -itd -p 5000:5000 registry
+# docker tag busybox:latest 192.168.1.10:5000/busybox:latest
+# docker push 192.168.1.10:5000/busybox:latest  //上传
+# docker run -it 192.168.1.10:5000/busybox:latest
+
+# docker tag myos:http 192.168.1.10:5000/myos:http
+# docker push  192.168.1.10:5000/myos:http
+
+
+
+
+
+
+
+
+
+
+
+
+
+
