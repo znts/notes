@@ -30,7 +30,10 @@ LVS工作模式有哪些
 – 最少连接（Least Connections）选择连接数最少的服务器
 – 加权最少连接（ Weighted Least Connections ）根据Real Server权重值，
 选择连接数最少的服务器
+<<<<<<< HEAD
 
+=======
+>>>>>>> 05e0e75b7554e3eac87d53f39055663159286c98
 11.12
 HAProxy的工作模式是什么
 • mode http

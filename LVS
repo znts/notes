@@ -49,6 +49,7 @@ net.ipv4.conf.all.arp_announce = 2
 # systemctl stop firewalld      #关闭防火墙
 # setenforce 0                  #关闭SELinux
 
+<<<<<<< HEAD
 
 
 
@@ -59,6 +60,80 @@ net.ipv4.conf.all.arp_announce = 2
 
 
 
+=======
+<<<<<<< HEAD
+修改web1服务器Keepalived配置文件
+# vim /etc/keepalived/keepalived.conf
+global_defs {
+  notification_email {
+    admin@tarena.com.cn         //设置报警收件人邮箱
+  }
+  notification_email_from ka@localhost    //设置发件人
+  smtp_server 127.0.0.1         //定义邮件服务器
+  smtp_connect_timeout 30
+  router_id  web1               //设置路由ID号（实验需要修改）
+}
+vrrp_instance VI_1 {
+  state MASTER             //主服务器为MASTER（实验需要修改）
+  interface eth0           //定义网络接口（实验需要修改）
+  virtual_router_id 50           //主辅VRID号必须一致（实验需要修改）
+  priority 100           //服务器优先级,优先级高优先获取VIP（实验需要修改）
+  advert_int 1
+  authentication {
+    auth_type pass
+    auth_pass forlvs      //主辅服务器密码必须一致
+  }
+  virtual_ipaddress { 192.168.4.80  }   //谁是主服务器谁获得该VIP（实验需要修改）
+}
+
+修改web2服务器Keepalived配置文件
+[root@web2 ~]# vim /etc/keepalived/keepalived.conf
+global_defs {
+  notification_email {
+    admin@tarena.com.cn         //设置报警收件人邮箱
+  }
+  notification_email_from ka@localhost    //设置发件人
+  smtp_server 127.0.0.1          //定义邮件服务器
+  smtp_connect_timeout 30
+  router_id  web2                //设置路由ID号（实验需要修改）
+}
+vrrp_instance VI_1 {
+  state BACKUP                   //从服务器为BACKUP（实验需要修改）
+  interface eth0                 //定义网络接口（实验需要修改）
+  virtual_router_id 50           //主辅VRID号必须一致（实验需要修改）
+  priority 50                    //服务器优先级（实验需要修改）
+  advert_int 1
+  authentication {
+     auth_type pass
+     auth_pass forlvs             //主辅服务器密码必须一致（实验需要修改）
+  }
+  virtual_ipaddress {  192.168.4.80  }  //谁是主服务器谁配置VIP（实验需要修改）
+}
+
+启动服务：
+# systemctl start keepalived
+
+配置防火墙和SELinux
+启动keepalived会自动添加一个drop的防火墙规则，需要清空！
+web1# iptables -F
+web1# setenforce 0
+web2# iptables -F
+web1# setenforce 0
+测试	在Web上查看VIP信息
+# ip addr show
+=======
+
+
+
+
+
+
+
+
+
+
+>>>>>>> 4e73b252b121331e02073eeddf48b8f08c653122
+>>>>>>> 05e0e75b7554e3eac87d53f39055663159286c98
 
 
 

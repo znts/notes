@@ -35,6 +35,7 @@ host2
 # ssh-keygen -N  ''   -f /root/.ssh/id_rsa   #非交互生成密钥文件
 # man pssh        #通过man帮助查看工具选项的作用
 pssh提供并发远程连接功能
+<<<<<<< HEAD
 
 -h		HOST_FILE	后边跟远程主机列表（ip）
 -H   		HOST_STRING	后边跟远程主机名或者ip地址
@@ -48,6 +49,8 @@ pssh提供并发远程连接功能
 -i  		在远程主机上执行命令完成后显示标准输出和标准错误
 -P  		在执行远程命令时，输出执行结果
 
+=======
+>>>>>>> 05e0e75b7554e3eac87d53f39055663159286c98
 -A                使用密码远程其他主机（默认使用密钥）
 -i                将输出显示在屏幕
 -H                设置需要连接的主机
@@ -56,11 +59,18 @@ pssh提供并发远程连接功能
 -t                设置超时时间
 -o dir            设置标准输出信息保存的目录
 -e dir            设置错误输出信息保存的目录
+<<<<<<< HEAD
 
 
 1）生成密钥并发送密钥到其他主机
 # ssh-keygen -N  ''   -f /root/.ssh/id_rsa     //非交互生成密钥文件
 # ssh -o StrictHostKeyChecking=no -X 192.168.4.254
+=======
+-x                传递参数给ssh
+
+1）生成密钥并发送密钥到其他主机
+# ssh-keygen -N  ''   -f /root/.ssh/id_rsa     //非交互生成密钥文件
+>>>>>>> 05e0e75b7554e3eac87d53f39055663159286c98
 # ssh-copy-id  host1
 # ssh-copy-id  host2
 # ssh-copy-id  host3
